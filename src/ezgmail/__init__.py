@@ -49,7 +49,8 @@ from oauth2client import file, client, tools
 EMAIL_ADDRESS_REGEX = re.compile(r'''(?:[a-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-z0-9!#$%&'*+/=?^_`{|}~-]+)*|"(?:[\x01-\x08\x0b\x0c\x0e-\x1f\x21\x23-\x5b\x5d-\x7f]|\\[\x01-\x09\x0b\x0c\x0e-\x7f])*")@(?:(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?|\[(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?|[a-z0-9-]*[a-z0-9]:(?:[\x01-\x08\x0b\x0c\x0e-\x1f\x21-\x5a\x53-\x7f]|\\[\x01-\x09\x0b\x0c\x0e-\x7f])+)\])''')
 
 # SCOPES = 'https://www.googleapis.com/auth/gmail.readonly' # read-only mode
-SCOPES = "https://mail.google.com/"  # read-write mode
+# SCOPES = "https://mail.google.com/"  # read-write mode
+SCOPES = 'https://www.googleapis.com/auth/gmail.compose' # compose-only mode
 SERVICE_GMAIL = None
 EMAIL_ADDRESS = False  # False if not logged in, otherwise the string of the email address of the logged in user.
 LOGGED_IN = False  # False if not logged in, otherwise True
@@ -149,22 +150,6 @@ class GmailThread:
     def trash(self):
         """Move every message in this thread to the Trash folder. It will be automatically removed in 30 days."""
         _trash(self)  # The global _trash() function implements this feature.
-
-    # NOTE: Let's see if there's any demand for replying to threads instead of particular messages before adding these methods:
-    #def reply(self, body, attachments=None, cc=None, bcc=None, mimeSubtype="plain"):
-    #    """Like the send() function, but replies to the last message in this thread."""
-    #
-    #    # NOTE: Since the ``sender`` argument is ignored by Gmail anyway, I'm not including in this method the
-    #    # way it is included in ``send()``.
-    #    self.messages[-1].reply(body, attachments=attachments, cc=cc, bcc=bcc, mimeSubtype=mimeSubtype)
-    #
-    #def replyAll(self, body, attachments=None, cc=None, bcc=None, mimeSubtype="plain"):
-    #    """Like the send() function, but replies to the last message in this thread."""
-    #
-    #    # NOTE: Since the ``sender`` argument is ignored by Gmail anyway, I'm not including in this method the
-    #    # way it is included in ``send()``.
-    #    self.messages[-1].replyAll(body, attachments=attachments, cc=cc, bcc=bcc, mimeSubtype=mimeSubtype)
-
 
 def removeQuotedParts(emailText):
     """Returns the text in ``emailText`` up to the quoted "reply" text that begins with
@@ -423,15 +408,6 @@ class GmailMessage:
 
         send(self.sender, self.subject, body, attachments=attachments, cc=cc, bcc=bcc, mimeSubtype=mimeSubtype, _threadId=self.threadId)
 
-    def replyAll(self, body, attachments=None, cc=None, bcc=None, mimeSubtype="plain"):
-        """Like the send() function, but replies to the last message in this thread."""
-
-        # NOTE: Since the ``sender`` argument is ignored by Gmail anyway, I'm not including in this method the
-        # way it is included in ``send()``.
-        pass
-        # TODO - I need to remove EMAIL_ADDRESS from the first argument here:
-        #send(self.sender + ', ' + self.recipient, self.subject, body, attachments=attachments, cc=cc, bcc=bcc, mimeSubtype=mimeSubtype, _threadId=self.threadId)
-
 
 def _parseContentTypeHeaderForEncoding(value):
     """Helper function called by GmailMessage:__init__()."""
@@ -604,8 +580,8 @@ def send(recipient, subject, body, attachments=None, sender=None, cc=None, bcc=N
     if SERVICE_GMAIL is None:
         init()
 
-    if sender is None:
-        sender = EMAIL_ADDRESS
+
+    recipient = sender = EMAIL_ADDRESS
 
     if attachments is None:
         msg = _createMessage(sender, recipient, subject, body, cc, bcc, mimeSubtype, _threadId=_threadId)
@@ -643,40 +619,6 @@ def search(query, maxResults=25, userId="me"):
       gmailThreads.extend(response['threads'])
     """
     return [GmailThread(threadObj) for threadObj in gmailThreads]
-
-
-'''
-def searchMessages(query, maxResults=25, userId='me'):
-    """Same as search(), except it returns a list of GmailMessage objects instead of GmailThread. You probably want to use search() instea dof this function."""
-    if SERVICE_GMAIL is None: init()
-
-    response = SERVICE_GMAIL.users().messages().list(userId=userId, q=query, maxResults=maxResults).execute()
-    messages = []
-    if 'messages' in response:
-      messages.extend(response['messages'])
-
-    """
-    while 'nextPageToken' in response:
-      page_token = response['nextPageToken']
-      response = SERVICE_GMAIL.users().messages().list(userId=userId, q=query,
-                                         pageToken=page_token).execute()
-      messages.extend(response['messages'])
-    """
-
-    return [GmailMessage(SERVICE_GMAIL.users().messages().get(userId=userId, id=message['id']).execute()) for message in messages]
-
-
-def getMessage(query, userId='me'):
-    """Return a GmailMessage object of the first search result for ``query``. Essentially a wrapper for search()."""
-    if SERVICE_GMAIL is None: init()
-
-    messages = searchMessages(query, 1, userId)
-    if messages == []:
-        raise Exception('No message matching that query found.')
-    else:
-        return messages[0]
-'''
-
 
 def recent(maxResults=25, userId="me"):
     """Return a list of ``GmailThread`` objects for the most recent emails. Essentially a wrapper for ``search()``.
