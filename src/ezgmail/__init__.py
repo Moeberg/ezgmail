@@ -4,7 +4,7 @@
 # Note: Unless you know what you're doing, also use the default 'me' value for userId parameters in this module.
 
 
-__version__ = "2021.08.05"
+__version__ = "2021.11.03"
 
 """
 NOTES FOR DEVELOPERS AND CONTRIBUTORS:
@@ -446,8 +446,10 @@ def init(userId="me", tokenFile="token.json", credentialsFile="credentials.json"
         store = file.Storage(tokenFile)
         creds = store.get()
         if not creds or creds.invalid:
+            args = tools.argparser.parse_args()
+            args.noauth_local_webserver = True
             flow = client.flow_from_clientsecrets(credentialsFile, SCOPES)
-            creds = tools.run_flow(flow, store)
+            creds = tools.run_flow(flow, store, args)
         SERVICE_GMAIL = build("gmail", "v1", http=creds.authorize(Http()))
         EMAIL_ADDRESS = SERVICE_GMAIL.users().getProfile(userId=userId).execute()["emailAddress"]
         LOGGED_IN = bool(EMAIL_ADDRESS)
